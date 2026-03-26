@@ -1,65 +1,137 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+
+type VerdictResult = {
+  verdict: string;
+  score: number;
+  callouts: string[];
+};
 
 export default function Home() {
+  const [chatInput, setChatInput] = useState("");
+  const [result, setResult] = useState<VerdictResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAnalyze = async () => {
+    if (!chatInput.trim()) return;
+
+    setIsAnalyzing(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ chatInput }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Analyze failed");
+      }
+
+      setResult({
+        verdict: data.verdict,
+        score: data.score,
+        callouts: data.callouts,
+      });
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen bg-neutral-950 text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 py-12">
+        <div className="mb-10">
+          <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-neutral-400">
+            Am I The Problem?
+          </p>
+          <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            Paste the chat. Get the verdict.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-300 sm:text-lg">
+            Find out how you actually come across — and what to say next.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 shadow-2xl">
+          <label
+            htmlFor="chatInput"
+            className="mb-3 block text-sm font-medium text-neutral-200"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Paste your dating chat
+          </label>
+
+          <textarea
+            id="chatInput"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder={`You: Hey, how was your day?
+Them: good
+You: Nice
+Them: lol`}
+            className="min-h-[220px] w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-sm text-white outline-none placeholder:text-neutral-500 focus:border-neutral-500"
+          />
+
+          <button
+            onClick={handleAnalyze}
+            disabled={!chatInput.trim() || isAnalyzing}
+            className="mt-4 inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Documentation
-          </a>
+            {isAnalyzing ? "Analyzing..." : "Analyze the chat"}
+          </button>
+
+          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
         </div>
-      </main>
-    </div>
+
+        {result && (
+          <div className="mt-8 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-neutral-400">
+                  Verdict
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  {result.verdict}
+                </h2>
+              </div>
+
+              <div className="rounded-full border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200">
+                {result.score} / 100
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {result.callouts.map((callout) => (
+                <div
+                  key={callout}
+                  className="rounded-xl bg-neutral-950 p-4 text-sm text-neutral-200"
+                >
+                  {callout}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-neutral-700 bg-neutral-950 p-4">
+              <p className="text-sm text-neutral-300">
+                Get the exact reply you should send next.
+              </p>
+              <button className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90">
+                Unlock the fix
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
