@@ -12,6 +12,7 @@ export default function Home() {
   const [chatInput, setChatInput] = useState("");
   const [result, setResult] = useState<VerdictResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
@@ -45,6 +46,32 @@ export default function Home() {
       setError(err.message || "Something went wrong");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    setIsStartingCheckout(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Checkout failed");
+      }
+
+      if (!data.url) {
+        throw new Error("Missing checkout URL");
+      }
+
+      window.location.href = data.url;
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+      setIsStartingCheckout(false);
     }
   };
 
@@ -125,8 +152,12 @@ Them: lol`}
               <p className="text-sm text-neutral-300">
                 Get the exact reply you should send next.
               </p>
-              <button className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90">
-                Unlock the fix
+              <button
+                onClick={handleCheckout}
+                disabled={isStartingCheckout}
+                className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isStartingCheckout ? "Redirecting..." : "Unlock the fix"}
               </button>
             </div>
           </div>
